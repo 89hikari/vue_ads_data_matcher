@@ -39,7 +39,14 @@ self.onmessage = (event) => {
           (parsedData.statusesSelected.indexOf(order.status) !== -1 ||
             !parsedData.statusesSelected.length) &&
           (parsedData.campaignItemsSelected.indexOf(newOrder.Campaign) !== -1 ||
-            !parsedData.campaignItemsSelected.length)
+            !parsedData.campaignItemsSelected.length) &&
+          (parsedData.selectedCities.indexOf(order.city) !== -1 ||
+            !parsedData.selectedCities.length) &&
+          (parsedData.isPrimaryAttribution
+            ? parsedData.isPrimaryAttribution === "Да"
+              ? newOrder["Is Primary Attribution"] === "true"
+              : newOrder["Is Primary Attribution"] === "false"
+            : true)
         )
           return {
             ...newOrder,

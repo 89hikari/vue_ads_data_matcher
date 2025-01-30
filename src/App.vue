@@ -14,6 +14,10 @@ const statuses = ref<string[]>([]);
 const campaignItems = ref<string[]>([]);
 const campaignItemsSelected = ref<string[]>([]);
 
+const cities = ref<string[]>([]);
+const selectedCities = ref<string[]>([]);
+const isPrimaryAttribution = ref<string>();
+
 const rawOrdersFile = ref<File | File[] | undefined>();
 const purchasedOrdersFile = ref<File | File[] | undefined>();
 
@@ -58,10 +62,15 @@ const handleFileChange = (
         statuses.value = [
           ...new Set(rawOrdersData.value.map(({ status }) => status)),
         ];
+        cities.value = [
+          ...new Set(rawOrdersData.value.map(({ city }) => city.toString())),
+        ].sort();
       } else if (fileType === "purchasedOrders") {
         purchasedOrdersData.value = event.data as PurchasedOrder[];
         campaignItems.value = [
-          ...new Set(purchasedOrdersData.value.map(({ Campaign }) => Campaign)),
+          ...new Set(
+            purchasedOrdersData.value.map(({ Campaign }) => Campaign.toString())
+          ),
         ].sort();
       }
 
@@ -85,6 +94,8 @@ const downloadMergedFile = () => {
       orderKey: orderKey.value,
       afKeywords: afKeywords.value,
       campaignItemsSelected: campaignItemsSelected.value,
+      selectedCities: selectedCities.value,
+      isPrimaryAttribution: isPrimaryAttribution.value,
     })
   );
 
@@ -126,7 +137,23 @@ const downloadMergedFile = () => {
     label="Campaign"
     clearable
     multiple
+    :disabled="mainLoading"
   ></v-autocomplete>
+  <v-autocomplete
+    v-model="selectedCities"
+    :items="cities"
+    label="Города"
+    clearable
+    multiple
+    :disabled="mainLoading"
+  ></v-autocomplete>
+  <v-select
+    label="Is primary attribution"
+    :items="['Да', 'Нет']"
+    v-model="isPrimaryAttribution"
+    :disabled="mainLoading"
+    clearable
+  ></v-select>
   <div class="d-flex align-center ga-4 mb-4">
     <div class="flex-column flex-1-1-0">
       <v-file-upload
