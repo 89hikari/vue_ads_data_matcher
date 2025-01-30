@@ -11,6 +11,8 @@ const afKeywords = ref<string>("af_keywords");
 const orderKey = ref<string>("af_order_id");
 const statusesSelected = ref<string[]>([]);
 const statuses = ref<string[]>([]);
+const campaignItems = ref<string[]>([]);
+const campaignItemsSelected = ref<string[]>([]);
 
 const rawOrdersFile = ref<File | File[] | undefined>();
 const purchasedOrdersFile = ref<File | File[] | undefined>();
@@ -58,6 +60,9 @@ const handleFileChange = (
         ];
       } else if (fileType === "purchasedOrders") {
         purchasedOrdersData.value = event.data as PurchasedOrder[];
+        campaignItems.value = [
+          ...new Set(purchasedOrdersData.value.map(({ Campaign }) => Campaign)),
+        ].sort();
       }
 
       mainLoading.value = false;
@@ -79,6 +84,7 @@ const downloadMergedFile = () => {
       statusesSelected: statusesSelected.value,
       orderKey: orderKey.value,
       afKeywords: afKeywords.value,
+      campaignItemsSelected: campaignItemsSelected.value,
     })
   );
 
@@ -114,15 +120,20 @@ const downloadMergedFile = () => {
     v-model="statusesSelected"
     :disabled="mainLoading"
   ></v-select>
+  <v-autocomplete
+    v-model="campaignItemsSelected"
+    :items="campaignItems"
+    label="Campaign"
+    clearable
+    multiple
+  ></v-autocomplete>
   <div class="d-flex align-center ga-4 mb-4">
     <div class="flex-column flex-1-1-0">
       <v-file-upload
         scrim="primary"
         divider-text="или"
         browse-text="Выбрать файл"
-        :title="
-          rawOrdersLoading ? 'Загрузка, подождите' : 'Файл сырой выгрузки'
-        "
+        :title="rawOrdersLoading ? 'Загрузка, подождите' : 'Файл выкупов'"
         clearable
         v-model="rawOrdersFile"
         @update:modelValue="handleFileChange('rawOrders', $event)"
@@ -134,7 +145,9 @@ const downloadMergedFile = () => {
         scrim="primary"
         divider-text="или"
         browse-text="Выбрать файл"
-        :title="purchasedOrdersLoading ? 'Загрузка, подождите' : 'Файл выкупов'"
+        :title="
+          purchasedOrdersLoading ? 'Загрузка, подождите' : 'Файл сырой выгрузки'
+        "
         clearable
         v-model="purchasedOrdersFile"
         @update:modelValue="handleFileChange('purchasedOrders', $event)"

@@ -34,7 +34,13 @@ self.onmessage = (event) => {
           (orderElem: RawOrder) =>
             orderElem.order_number?.trim() === eventValueKey.trim()
         );
-        if (order && parsedData.statusesSelected.indexOf(order.status) !== -1)
+        if (
+          order &&
+          (parsedData.statusesSelected.indexOf(order.status) !== -1 ||
+            !parsedData.statusesSelected.length) &&
+          (parsedData.campaignItemsSelected.indexOf(newOrder.Campaign) !== -1 ||
+            !parsedData.campaignItemsSelected.length)
+        )
           return {
             ...newOrder,
             ...order,

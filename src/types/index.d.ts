@@ -6,6 +6,7 @@ export type RawOrder = {
 export type PurchasedOrder = {
   "Event Value": string;
   "Original URL": string;
+  Campaign: string;
 };
 
 export type EventValue = {
