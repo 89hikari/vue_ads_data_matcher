@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import { utils as XLSXUtils, read } from "xlsx";
 import type { EventValue, PurchasedOrder, RawOrder } from "../types";
 
 const extractSearchPhrase = (urlString: string, key: string): string | null => {
@@ -13,11 +13,11 @@ const extractSearchPhrase = (urlString: string, key: string): string | null => {
 
 self.onmessage = (event) => {
   if (event.data.type === "uploadFile") {
-    const workbook = XLSX.read(event.data.data, { type: "array" });
+    const workbook = read(event.data.data, { type: "array" });
 
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(sheet);
+    const jsonData = XLSXUtils.sheet_to_json(sheet);
 
     self.postMessage(jsonData);
     return;
@@ -27,7 +27,7 @@ self.onmessage = (event) => {
 
   const newFileJson = parsedData.purchasedOrdersData.map(
     (newOrder: PurchasedOrder) => {
-      const eventValueJson = JSON.parse(newOrder["Event Value"]) as EventValue;
+      const eventValueJson = <EventValue>JSON.parse(newOrder["Event Value"]);
       const eventValueKey = eventValueJson[parsedData.orderKey];
       if (eventValueKey) {
         const order = parsedData.rawOrdersData.find(
@@ -63,8 +63,8 @@ self.onmessage = (event) => {
   );
 
   if (newFileJson) {
-    const ws = XLSX.utils.json_to_sheet(newFileJson);
-    const wb = XLSX.utils.book_new();
+    const ws = XLSXUtils.json_to_sheet(newFileJson);
+    const wb = XLSXUtils.book_new();
 
     self.postMessage({
       ws,

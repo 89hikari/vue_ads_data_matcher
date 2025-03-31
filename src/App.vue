@@ -1,111 +1,6 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import * as XLSX from "xlsx";
-import type { PurchasedOrder, RawOrder } from "./types";
-
-const rawOrdersLoading = ref<boolean>(false);
-const purchasedOrdersLoading = ref<boolean>(false);
-const isDownloading = ref<boolean>(false);
-const mainLoading = ref<boolean>(false);
-const afKeywords = ref<string>("af_keywords");
-const orderKey = ref<string>("af_order_id");
-const statusesSelected = ref<string[]>([]);
-const statuses = ref<string[]>([]);
-const campaignItems = ref<string[]>([]);
-const campaignItemsSelected = ref<string[]>([]);
-
-const cities = ref<string[]>([]);
-const selectedCities = ref<string[]>([]);
-const isPrimaryAttribution = ref<string>();
-
-const rawOrdersFile = ref<File | File[] | undefined>();
-const purchasedOrdersFile = ref<File | File[] | undefined>();
-
-const rawOrdersData = ref<RawOrder[] | null>(null);
-const purchasedOrdersData = ref<PurchasedOrder[] | null>(null);
-
-const worker = new Worker(new URL("./utils/worker?worker", import.meta.url), {
-  type: "module",
-});
-
-const handleFileChange = (
-  fileType: "rawOrders" | "purchasedOrders",
-  incomingValue: File[] | File
-) => {
-  const file = Array.isArray(incomingValue) ? incomingValue[0] : incomingValue;
-  if (!file) {
-    if (fileType === "rawOrders") {
-      rawOrdersData.value = [];
-    } else {
-      purchasedOrdersData.value = [];
-    }
-    return;
-  }
-
-  mainLoading.value = true;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    if (fileType === "rawOrders") {
-      rawOrdersLoading.value = true;
-    } else {
-      purchasedOrdersLoading.value = true;
-    }
-
-    worker!.postMessage({
-      type: "uploadFile",
-      data: new Uint8Array(e.target?.result as ArrayBuffer),
-    });
-
-    worker.onmessage = (event: MessageEvent) => {
-      if (fileType === "rawOrders") {
-        rawOrdersData.value = event.data as RawOrder[];
-        statuses.value = [
-          ...new Set(rawOrdersData.value.map(({ status }) => status)),
-        ];
-        cities.value = [
-          ...new Set(rawOrdersData.value.map(({ city }) => city.toString())),
-        ].sort();
-      } else if (fileType === "purchasedOrders") {
-        purchasedOrdersData.value = event.data as PurchasedOrder[];
-        campaignItems.value = [
-          ...new Set(
-            purchasedOrdersData.value.map(({ Campaign }) => Campaign.toString())
-          ),
-        ].sort();
-      }
-
-      mainLoading.value = false;
-      rawOrdersLoading.value = false;
-      purchasedOrdersLoading.value = false;
-    };
-  };
-
-  const blob = new Blob([file], { type: file.type });
-  reader.readAsArrayBuffer(blob);
-};
-
-const downloadMergedFile = () => {
-  isDownloading.value = true;
-  worker.postMessage(
-    JSON.stringify({
-      rawOrdersData: rawOrdersData.value,
-      purchasedOrdersData: purchasedOrdersData.value,
-      statusesSelected: statusesSelected.value,
-      orderKey: orderKey.value,
-      afKeywords: afKeywords.value,
-      campaignItemsSelected: campaignItemsSelected.value,
-      selectedCities: selectedCities.value,
-      isPrimaryAttribution: isPrimaryAttribution.value,
-    })
-  );
-
-  worker.onmessage = (event: MessageEvent) => {
-    XLSX.utils.book_append_sheet(event.data.wb, event.data.ws, "Merged Orders");
-    XLSX.writeFile(event.data.wb, "merged_orders.xlsx");
-
-    isDownloading.value = false;
-  };
-};
+import { useAppStore } from "./stores/app.store";
+const appStore = useAppStore();
 </script>
 
 <template>
@@ -114,44 +9,44 @@ const downloadMergedFile = () => {
     class="mb-3"
     hide-details="auto"
     label="Keywords"
-    v-model="afKeywords"
-    :disabled="mainLoading"
+    v-model="appStore.afKeywords"
+    :disabled="appStore.loading"
   ></v-text-field>
   <v-text-field
     class="mb-3"
     hide-details="auto"
     label="Ключ номера заказа"
-    v-model="orderKey"
-    :disabled="mainLoading"
+    v-model="appStore.orderKey"
+    :disabled="appStore.loading"
   ></v-text-field>
   <v-select
     label="Статус"
-    :items="statuses"
+    :items="appStore.statuses.initial"
     multiple
-    v-model="statusesSelected"
-    :disabled="mainLoading"
+    v-model="appStore.statuses.selected"
+    :disabled="appStore.loading"
   ></v-select>
   <v-autocomplete
-    v-model="campaignItemsSelected"
-    :items="campaignItems"
+    v-model="appStore.campaignItems.selected"
+    :items="appStore.campaignItems.initial"
     label="Campaign"
     clearable
     multiple
-    :disabled="mainLoading"
+    :disabled="appStore.loading"
   ></v-autocomplete>
   <v-autocomplete
-    v-model="selectedCities"
-    :items="cities"
+    v-model="appStore.cities.selected"
+    :items="appStore.cities.initial"
     label="Города"
     clearable
     multiple
-    :disabled="mainLoading"
+    :disabled="appStore.loading"
   ></v-autocomplete>
   <v-select
     label="Is primary attribution"
-    :items="['Да', 'Нет']"
-    v-model="isPrimaryAttribution"
-    :disabled="mainLoading"
+    :items="appStore.primaryAttribution.initial"
+    v-model="appStore.primaryAttribution.selected"
+    :disabled="appStore.loading"
     clearable
   ></v-select>
   <div class="d-flex align-center ga-4 mb-4">
@@ -160,11 +55,13 @@ const downloadMergedFile = () => {
         scrim="primary"
         divider-text="или"
         browse-text="Выбрать файл"
-        :title="rawOrdersLoading ? 'Загрузка, подождите' : 'Файл выкупов'"
+        :title="
+          appStore.rawOrders.loading ? 'Загрузка, подождите' : 'Файл выкупов'
+        "
         clearable
-        v-model="rawOrdersFile"
-        @update:modelValue="handleFileChange('rawOrders', $event)"
-        :disabled="mainLoading"
+        v-model="appStore.rawOrders.file"
+        @update:modelValue="appStore.handleFileChange('rawOrders', $event)"
+        :disabled="appStore.rawOrders.loading"
       ></v-file-upload>
     </div>
     <div class="flex-column flex-1-1-0">
@@ -173,21 +70,25 @@ const downloadMergedFile = () => {
         divider-text="или"
         browse-text="Выбрать файл"
         :title="
-          purchasedOrdersLoading ? 'Загрузка, подождите' : 'Файл сырой выгрузки'
+          appStore.purchasedOrders.loading
+            ? 'Загрузка, подождите'
+            : 'Файл сырой выгрузки'
         "
         clearable
-        v-model="purchasedOrdersFile"
-        @update:modelValue="handleFileChange('purchasedOrders', $event)"
-        :disabled="mainLoading"
+        v-model="appStore.purchasedOrders.file"
+        @update:modelValue="
+          appStore.handleFileChange('purchasedOrders', $event)
+        "
+        :disabled="appStore.purchasedOrders.loading"
       ></v-file-upload>
     </div>
   </div>
   <v-btn
-    v-if="rawOrdersData && purchasedOrdersData"
-    @click="downloadMergedFile"
-    :disabled="isDownloading"
+    v-if="appStore.canDownload"
+    @click="appStore.download"
+    :disabled="appStore.isDownloading"
   >
-    {{ isDownloading ? "Формируем" : "Скачать" }}
+    {{ appStore.isDownloading ? "Формируем" : "Скачать" }}
   </v-btn>
 </template>
 
