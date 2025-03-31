@@ -14,3 +14,9 @@ export type PurchasedOrder = {
 export type EventValue = {
   [key: string]: string;
 };
+
+export type InitFile<T> = {
+  file: File | undefined;
+  data: T[];
+  loading: boolean;
+};

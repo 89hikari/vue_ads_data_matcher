@@ -8,6 +8,7 @@ import { VFileUpload } from "vuetify/labs/VFileUpload";
 import "vuetify/styles/main.css";
 import "./style.css";
 
+import { createPinia } from "pinia";
 import App from "./App.vue";
 
 const vuetify = createVuetify({
@@ -18,4 +19,6 @@ const vuetify = createVuetify({
   },
 });
 
-createApp(App).use(vuetify).mount("#app");
+const pinia = createPinia();
+
+createApp(App).use(vuetify).use(pinia).mount("#app");
